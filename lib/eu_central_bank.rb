@@ -19,8 +19,9 @@ class EuCentralBank < Money::Bank::VariableExchange
   CURRENCIES = %w(USD JPY BGN CZK DKK GBP HUF ILS ISK PLN RON SEK CHF NOK HRK RUB TRY AUD BRL CAD CNY HKD IDR INR KRW MXN MYR NZD PHP SGD THB ZAR).map(&:freeze).freeze
   ECB_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'.freeze
   ECB_90_DAY_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml'.freeze
+  ECB_ALL_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-sdmx.xml'.freeze
 
-  def initialize(st = Money::RatesStore::StoreWithHistoricalDataSupport.new, &block)
+  def initialize(st=Money::RatesStore::StoreWithHistoricalDataSupport.new, &block)
     super
     @currency_string = nil
   end
@@ -33,10 +34,14 @@ class EuCentralBank < Money::Bank::VariableExchange
     update_parsed_historical_rates(doc(cache, ECB_90_DAY_URL))
   end
 
+  def update_historical_all_time(cache=nil)
+    update_parsed_all_time_rates(sdmx_doc(cache, ECB_ALL_RATES_URL))
+  end
+
   def save_rates(cache, url=ECB_RATES_URL)
     raise InvalidCache unless cache
     File.open(cache, "w") do |file|
-      io = open(url);
+      io = open(url)
       io.each_line { |line| file.puts line }
     end
   end
@@ -95,6 +100,7 @@ class EuCentralBank < Money::Bank::VariableExchange
       # Backwards compatibility for the opts hash
       date = date[:date]
     end
+
     store.add_rate(::Money::Currency.wrap(from).iso_code, ::Money::Currency.wrap(to).iso_code, rate, date)
   end
 
@@ -162,6 +168,12 @@ class EuCentralBank < Money::Bank::VariableExchange
 
   protected
 
+  # This will parse the SDMX document by looking at groups of currencies
+  def sdmx_doc(cache, url=ECB_ALL_RATES_URL)
+    rates_source = !!cache ? cache : url
+    Nokogiri::XML(open(rates_source))
+  end
+
   def doc(cache, url=ECB_RATES_URL)
     rates_source = !!cache ? cache : url
     Nokogiri::XML(open(rates_source)).tap { |doc| doc.xpath('gesmes:Envelope/xmlns:Cube/xmlns:Cube//xmlns:Cube') }
@@ -208,6 +220,32 @@ class EuCentralBank < Money::Bank::VariableExchange
 
     @historical_last_updated = Time.now
   end
+
+  def update_parsed_all_time_rates(raw_sdmx_doc)
+    sdmx_doc = raw_sdmx_doc.xpath("xmlns:CompactData/*[local-name()='DataSet']/*[local-name()='Series']")
+
+    store.transaction true do
+      sdmx_doc.each do |series|
+        rates = series.xpath("*[local-name()='Obs']")
+
+        if CURRENCIES.include?(series.attribute('CURRENCY').value)
+          rates.each do |exchange_rate|
+            rate = BigDecimal(exchange_rate.attribute("OBS_VALUE").value)
+            currency = series.attribute("CURRENCY").value.upcase
+            date = exchange_rate.attribute("TIME_PERIOD").value
+            set_rate("EUR", currency, rate, date)
+          end
+        end
+      end
+    end
+
+    rates_updated_at = raw_sdmx_doc.xpath('xmlns:CompactData//xmlns:Extracted').first.to_s
+
+    @historical_rates_updated_at = Time.parse(rates_updated_at)
+
+    @historical_last_updated = Time.now
+  end
+
 
   private
 
