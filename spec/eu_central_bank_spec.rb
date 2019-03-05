@@ -273,9 +273,24 @@ describe "EuCentralBank" do
     }.not_to raise_error
   end
 
-	it "should accept a different store" do
-		store = double
-		bank = EuCentralBank.new(store)
+  it "should accept a different store" do
+    store = double
+    bank = EuCentralBank.new(store)
     expect(bank.store).to eq store
-	end
+  end
+
+  context 'update_historical_all_time' do
+
+    it 'finds old conversion rates beyond 90 days' do
+      @bank.update_historical_all_time
+
+      workday = Date.today - 100
+      workday -= 1 if workday.saturday?
+      workday -= 2 if workday.sunday?
+
+      expect {
+        @bank.exchange(100, 'GBP', 'EUR', workday)
+      }.not_to raise_error
+    end
+  end
 end
