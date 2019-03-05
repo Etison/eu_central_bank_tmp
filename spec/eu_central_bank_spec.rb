@@ -288,7 +288,9 @@ describe "EuCentralBank" do
       workday -= 1 if workday.saturday?
       workday -= 2 if workday.sunday?
 
-      @bank.exchange(100, 'GBP', 'EUR', workday)
+      expect {
+        @bank.exchange(100, 'GBP', 'EUR', workday)
+      }.not_to raise_error
     end
   end
 end
