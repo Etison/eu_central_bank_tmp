@@ -17,9 +17,9 @@ class EuCentralBank < Money::Bank::VariableExchange
   SERIALIZER_DATE_SEPARATOR = '_AT_'
 
   CURRENCIES = %w(USD JPY BGN CZK DKK GBP HUF ILS ISK PLN RON SEK CHF NOK HRK RUB TRY AUD BRL CAD CNY HKD IDR INR KRW MXN MYR NZD PHP SGD THB ZAR).map(&:freeze).freeze
-  ECB_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'.freeze
-  ECB_90_DAY_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml'.freeze
-  ECB_ALL_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-sdmx.xml'.freeze
+  ECB_RATES_URL = 'https://clickfunnels-assets.clickfunnels.com/eurofxref-daily.xml'.freeze
+  ECB_90_DAY_URL = 'https://clickfunnels-assets.clickfunnels.com/eurofxref-hist-90d.xml'.freeze
+  ECB_ALL_RATES_URL = 'https://clickfunnels-assets.clickfunnels.com/eurofxref-sdmx.xml'.freeze
 
   def initialize(st=Money::RatesStore::StoreWithHistoricalDataSupport.new, &block)
     super
